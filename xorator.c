@@ -2,23 +2,49 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
+#include <signal.h>
 
-#define MAX_LENGTH 30000
+#define MAX_ARG_COUNT 20
+
+char arg[MAX_ARG_COUNT][100];
+char *argp[MAX_ARG_COUNT];
+
+int GEN_PID; 
+
+void parsim(char *text)
+{
+    char c;
+    int arg_count=0;
+    char buf[1000];
+    char *cp = buf;
+    while (arg_count < MAX_ARG_COUNT){
+        c = *(text++);
+        if (c == '\0' || c == ' ' || c == '\t') {
+            *cp = '\0';
+            strcpy(arg[arg_count++], buf);
+            while (c == ' ' || c == '\t') c = *(text++);
+            if (c == '\0') break;
+            cp = buf;
+        }
+        *(cp++) = c;
+    }
+
+    for(c=0; c< arg_count; c++)
+            argp[c] = arg[c];
+        argp[arg_count] = NULL;
+}
 
 int main(int argc, char* argv[])
 {
     int pipe_cat[2];
     int pipe_gen[2];
-
-    char buf[MAX_LENGTH]; 
     
-	int key = 0;
     char mas_gen[1000];
     char mas_cat[1000];
-    char file[1000];
-
+    
     int opt;
-    while ((opt = getopt(argc, argv, ":g:c:k:f:")) != -1) {
+    while ((opt = getopt(argc, argv, ":g:c:")) != -1) {
         switch(opt) {
             case 'g':
                 strcpy(mas_gen, optarg);
@@ -26,17 +52,12 @@ int main(int argc, char* argv[])
             case 'c':
                 strcpy(mas_cat, optarg);
                 break;
-            case 'f':
-                strcpy(file, optarg);
-                break;
-            case 'k':
-                sscanf(optarg,"%d",&key);
-                break;
             default:
                 break;
         }
     }
-    if ((strlen(file) < 1) || (strlen(mas_cat) < 1) || (strlen(mas_gen) < 1)) {
+
+    if ((strlen(mas_cat) < 1) || (strlen(mas_gen) < 1)) {
         printf("nope\n"); 
         exit(1);
     }
@@ -50,42 +71,39 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
+    if (GEN_PID = (fork() == 0)){
+        close(1);
+        dup(pipe_gen[1]);
+        close(pipe_gen[1]);
+        close(pipe_cat[1]);
+
+        parsim(mas_gen);
+        execvp(argp[0], argp);
+        _exit(0);
+    }
+
     if (fork() == 0){
         close(1);
         dup(pipe_cat[1]);
         close(pipe_cat[1]);
-        execlp(mas_cat, mas_cat, file, (char*)0);
-        _exit(0);
-    }
-
-    int buf_length = read(pipe_cat[0], buf, MAX_LENGTH);
-    
-    char args[2][1000];
-    sprintf(args[0], "%d", buf_length);
-    sprintf(args[1], "%d", key);
-
-
-    if (fork() == 0){
-        close(1);
-        dup(pipe_gen[1]);
         close(pipe_gen[1]);
 
-        if (key > 0) 
-            execlp(mas_gen, mas_gen, "-l", args[0],"-k", args[1], (char*)0);
-        else
-            execlp(mas_gen, mas_gen, "-l", args[0], (char*)0);
-        
+        parsim(mas_cat);
+        execvp(argp[0], argp);
         _exit(0);
     }
+    
+    close(pipe_cat[1]);
 
-    char b[1];
+    char buf[1];char b[1];
     char res;
     int i;
-    for(i = 0; i < buf_length; i++){
+    while (read(pipe_cat[0], buf, 1) != 0){    
         read(pipe_gen[0], b, 1);
-        res = b[0] ^ buf[i];
+        res = b[0] ^ buf[0];
         printf("%c",res);
     }
+    kill(GEN_PID, SIGKILL);
 
-    return 1;
+    return 0;
 }

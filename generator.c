@@ -25,25 +25,17 @@ long ppow(int x, int y)
 
 int main(int argc, char* argv[])
 {
-    int key_len = 0,key = DEFAULT_SUPER_SECRET_KEY;
-	
+    int key = DEFAULT_SUPER_SECRET_KEY;
+    
     int opt;
-    while ((opt = getopt(argc, argv, ":l:k:")) != -1) {
+    while ((opt = getopt(argc, argv, ":k:")) != -1) {
         switch(opt) {
-            case 'l':
-                sscanf(optarg,"%d",&key_len);
-                break;
             case 'k':
                 sscanf(optarg,"%d",&key);
                 break;
             default:
                 break;
         }
-    }
-
-    if (key_len < 1){
-        printf("Упс!\n");
-        exit(1);
     }
 
     int i = 0,right;
@@ -53,7 +45,7 @@ int main(int argc, char* argv[])
     int temp_key;
     long int cur_key = key;
     
-    while (i < key_len){
+    while (1){
         p = cur_key*cur_key;
         new_N = getN(p);
         right = new_N / 2;
@@ -65,7 +57,7 @@ int main(int argc, char* argv[])
             printf("%c", (char)temp_key);
             temp_key>>=sizeof(char)*8;
             i++;
-        }while((temp_key != 0) && (i<key_len));
+        }while(temp_key != 0);
         
         if (cur_key == 0) {cur_key = key;}
     }
