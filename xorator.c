@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
     int pipe_cat[2];
     int pipe_gen[2];
 
-    char buf[MAX_LENGTH];
+    char buf[MAX_LENGTH]; 
     
 	int key = 0;
     char mas_gen[1000];
